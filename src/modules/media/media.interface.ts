@@ -8,12 +8,11 @@ export type TMediaType = 'url' | 'audio' | 'files';
 
 export type TCategory =
     | 'video'
-    | 'podcast'
+    | 'interest-a-being-speaker'
     | 'event-recording'
     | 'expert-interview'
     | 'insight'
-    | 'blog'
-    | 'resource';
+    | 'community';
 
 export interface IMedia extends Document {
     title: string;
