@@ -12,6 +12,8 @@ import Course from "../course/course.model";
 import { Event } from "../event/event.model";
 import JoinMentorCoach from "../JoinMentorsAndCoache/JoinMentorsAndCoach.model";
 import PurchaseRecord from "../purchaseRecord/purchaseRecord.model";
+import EnrollCourse from "../enrollCourse/enrollCourse.model";
+
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
@@ -54,7 +56,7 @@ const createPaymentForSubscription = async (
     }
 
     const expirationDate = new Date(
-      now.getTime() + (subscription.trialDays || 7) * 24 * 60 * 60 * 1000,
+      now.getTime() + (subscription.trialDays || 3) * 24 * 60 * 60 * 1000,
     );
 
     const newPurchase = await PurchaseSubscription.create({
@@ -188,6 +190,23 @@ const createGeneralCheckoutForEntity = async (
       status: "free",
     });
 
+    if (itemType === "course") {
+      await EnrollCourse.findOneAndUpdate(
+        { userId: user._id, courseId: item._id },
+        {
+          userId: user._id,
+          courseId: item._id,
+          transactionId: "free_access",
+          paymentStatus: "completed",
+        },
+        { upsert: true, new: true }
+      );
+
+      await Course.findByIdAndUpdate(item._id, {
+        $inc: { totalEnrolled: 1 },
+      });
+    }
+
     return {
       message: "Access granted for free based on active subscription",
       purchaseRecord: record,
@@ -263,6 +282,34 @@ const stripeWebhookHandler = async (sig: any, payload: Buffer) => {
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
 
+    // Handle course enrollments à la carte (EnrollCourse flow)
+    if (session.metadata?.isCourseEnrollment === "true") {
+      const transactionId = session.id;
+      const enrollment = await EnrollCourse.findOne({ transactionId });
+      
+      if (!enrollment) {
+        throw new AppError("Enrollment record not found", StatusCodes.NOT_FOUND);
+      }
+
+      if (enrollment.paymentStatus === "completed") {
+        return { message: "Enrollment already completed" };
+      }
+
+      const updatedEnrollment = await EnrollCourse.findOneAndUpdate(
+        { transactionId, paymentStatus: "pending" },
+        { paymentStatus: "completed" },
+        { new: true }
+      );
+
+      if (updatedEnrollment) {
+        await Course.findByIdAndUpdate(enrollment.courseId, {
+          $inc: { totalEnrolled: 1 },
+        });
+      }
+
+      return updatedEnrollment;
+    }
+
     // Handle generalized checkouts
     if (session.metadata?.isGeneralCheckout === "true") {
       const transactionId = session.id;
@@ -280,6 +327,24 @@ const stripeWebhookHandler = async (sig: any, payload: Buffer) => {
         { transactionId },
         { $set: { status: "paid" } }
       );
+
+      // If it's a course checkout, we should ALSO create/update an EnrollCourse record as completed so courseService behaves correctly!
+      if (record.itemType === "course") {
+        await EnrollCourse.findOneAndUpdate(
+          { userId: record.userId, courseId: record.itemId },
+          { 
+            userId: record.userId, 
+            courseId: record.itemId, 
+            transactionId: transactionId, 
+            paymentStatus: "completed" 
+          },
+          { upsert: true, new: true }
+        );
+        
+        await Course.findByIdAndUpdate(record.itemId, {
+          $inc: { totalEnrolled: 1 }
+        });
+      }
 
       return record;
     }

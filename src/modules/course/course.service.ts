@@ -4,6 +4,8 @@ import { uploadToCloudinary } from "../../utils/cloudinary";
 import EnrollCourse from "../enrollCourse/enrollCourse.model";
 import { ILesson } from "./course.interface";
 import Course from "./course.model";
+import purchaseSubscriptionService from "../purchaseSubscription/purchaseSubscription.service";
+
 
 const CreateNewCourse = async (
   payload: any,
@@ -105,12 +107,26 @@ const getAllCourses = async (query: Record<string, any>, user?: any) => {
     finalData = data.map((course: any) => ({ ...course, isLocked: false }));
   } else {
     let enrolledCourseIds: string[] = [];
+    let hasFreeCourseAccess = false;
+
     if (user) {
       const enrollments = await EnrollCourse.find({
         userId: user._id || user.id,
         paymentStatus: "completed",
       });
       enrolledCourseIds = enrollments.map((e) => e.courseId.toString());
+
+      try {
+        const benefits = await purchaseSubscriptionService.getUserBenefits((user._id || user.id).toString());
+        if (benefits.hasActiveSubscription) {
+          const accessStatus = benefits.accessLevels?.courses;
+          if (accessStatus === "free_access" || accessStatus === "free_unlimited") {
+            hasFreeCourseAccess = true;
+          }
+        }
+      } catch (err) {
+        // Log error and fallback gracefully
+      }
     }
 
     finalData = data.map((course: any) => {
@@ -118,7 +134,7 @@ const getAllCourses = async (query: Record<string, any>, user?: any) => {
       const isEnrolled = enrolledCourseIds.includes(course._id.toString());
       return {
         ...course,
-        isLocked: price > 0 && !isEnrolled,
+        isLocked: price > 0 && !isEnrolled && !hasFreeCourseAccess,
       };
     });
   }
@@ -150,6 +166,18 @@ const getSingleCourse = async (id: string, user?: any) => {
     });
     if (isEnrolled) {
       hasAccess = true;
+    } else {
+      try {
+        const benefits = await purchaseSubscriptionService.getUserBenefits((user._id || user.id).toString());
+        if (benefits.hasActiveSubscription) {
+          const accessStatus = benefits.accessLevels?.courses;
+          if (accessStatus === "free_access" || accessStatus === "free_unlimited") {
+            hasAccess = true;
+          }
+        }
+      } catch (err) {
+        // Fallback gracefully
+      }
     }
   }
 
