@@ -2,6 +2,7 @@ import { StatusCodes } from "http-status-codes";
 import catchAsync from "../../utils/catchAsync";
 import sendResponse from "../../utils/sendResponse";
 import JoinMentorsAndCoachService from "./JoinMentorsAndCoach.service";
+import AppError from "../../errors/AppError";
 
 const createJoinMentorsAndCoachIntoDB = catchAsync(async (req, res) => {
   const { email } = req.user!;
@@ -93,6 +94,23 @@ const toggleMentorAndCoachActive = catchAsync(async (req, res) => {
   });
 });
 
+const bulkUploadMentorsAndCoaches = catchAsync(async (req, res) => {
+  const file = req.file as Express.Multer.File;
+  if (!file) {
+    throw new AppError("CSV file is required", StatusCodes.BAD_REQUEST);
+  }
+
+  const result =
+    await JoinMentorsAndCoachService.bulkUploadMentorsAndCoaches(file);
+
+  sendResponse(res, {
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: `Bulk upload completed. Successfully created ${result.createdCount}, updated ${result.updatedCount} records.`,
+    data: result,
+  });
+});
+
 const JoinMentorsAndCoachController = {
   createJoinMentorsAndCoachIntoDB,
   getAllJoinMentorsAndCoaches,
@@ -100,6 +118,7 @@ const JoinMentorsAndCoachController = {
   approvedJoinMentorsAndCoach,
   toggleMentorAndCoachActive,
   getApprovedJoinMentorsAndCoaches,
+  bulkUploadMentorsAndCoaches,
 };
 
 export default JoinMentorsAndCoachController;

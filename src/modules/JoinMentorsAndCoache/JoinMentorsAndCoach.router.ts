@@ -203,6 +203,63 @@ router.put(
   JoinMentorsAndCoachController.toggleMentorAndCoachActive,
 );
 
+/**
+ * @swagger
+ * /api/v1/JoinMentorsAndCoache/bulk-upload:
+ *   post:
+ *     summary: Bulk upload Mentors and Coaches via CSV (Admin Only)
+ *     tags: [JoinMentorsAndCoache]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - file
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *                 description: CSV file containing mentor/coach details
+ *     responses:
+ *       200:
+ *         description: Mentors and coaches uploaded successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
+ *                   type: string
+ *                   example: Bulk upload completed. Successfully created 5, updated 2 records.
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     createdCount:
+ *                       type: integer
+ *                       example: 5
+ *                     updatedCount:
+ *                       type: integer
+ *                       example: 2
+ *                     errors:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                         example: Row 3: Missing required field "firstName"
+ */
+router.post(
+  "/bulk-upload",
+  auth(USER_ROLE.ADMIN),
+  upload.single("file"),
+  JoinMentorsAndCoachController.bulkUploadMentorsAndCoaches,
+);
+
 const joinMentorsAndCoachRouter = router;
 export default joinMentorsAndCoachRouter;
 

@@ -18,12 +18,16 @@ export const upload = multer({
   storage: storage,
   limits: { fileSize: 10 * 1024 * 1024 }, 
   fileFilter: (req, file, cb) => {
-    const filetypes = /jpeg|jpg|pdf|png|mp4|avi|mov|avif|webp|doc|docx|mp3|mpeg|wav|m4a|xls|xlsx|ppt|pptx/;
+    const filetypes = /jpeg|jpg|pdf|png|mp4|avi|mov|avif|webp|doc|docx|mp3|mpeg|wav|m4a|xls|xlsx|ppt|pptx|csv/;
 
-    const mimetype = filetypes.test(file.mimetype);
     const extname = filetypes.test(
       path.extname(file.originalname).toLowerCase()
     );
+    const mimetype =
+      filetypes.test(file.mimetype) ||
+      file.mimetype === "text/csv" ||
+      file.mimetype === "application/vnd.ms-excel" ||
+      file.mimetype === "text/plain";
 
     if (mimetype && extname) {
       return cb(null, true);
