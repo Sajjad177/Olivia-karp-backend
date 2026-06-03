@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router } from 'express';
 
 /**
  * @swagger
@@ -6,11 +6,11 @@ import { Router } from "express";
  *   name: Courses
  *   description: Video course modules, lessons, and base pricing configurations.
  */
-import auth from "../../middleware/auth";
-import optionalAuth from "../../middleware/optionalAuth";
-import { upload } from "../../middleware/multer.middleware";
-import { USER_ROLE } from "../user/user.constant";
-import courseController from "./course.controller";
+import auth from '../../middleware/auth';
+import optionalAuth from '../../middleware/optionalAuth';
+import { upload } from '../../middleware/multer.middleware';
+import { USER_ROLE } from '../user/user.constant';
+import courseController from './course.controller';
 
 const router = Router();
 
@@ -47,9 +47,12 @@ const router = Router();
  *         description: Course created
  */
 router.post(
-  "/create",
+  '/create',
   auth(USER_ROLE.ADMIN),
-  upload.fields([{ name: "image", maxCount: 5 }]),
+  upload.fields([
+    { name: 'image', maxCount: 1 },
+    { name: 'instructorImage', maxCount: 1 },
+  ]),
   courseController.CreateNewCourse,
 );
 
@@ -70,11 +73,11 @@ router.post(
  *         schema:
  *           type: string
  *           enum: [
- *             'all courses', 
- *             'beginner courses', 
- *             'professional development courses', 
- *             'business courses', 
- *             'educational courses', 
+ *             'all courses',
+ *             'beginner courses',
+ *             'professional development courses',
+ *             'business courses',
+ *             'educational courses',
  *             'insight courses'
  *           ]
  *         description: Filter by specific category
@@ -103,7 +106,7 @@ router.post(
  *                   items:
  *                     type: object
  */
-router.get("/all", optionalAuth(), courseController.getAllCourses);
+router.get('/all', optionalAuth(), courseController.getAllCourses);
 
 /**
  * @swagger
@@ -121,7 +124,7 @@ router.get("/all", optionalAuth(), courseController.getAllCourses);
  *       200:
  *         description: Course details and lessons
  */
-router.get("/:courseId", optionalAuth(), courseController.getSingleCourse);
+router.get('/:courseId', optionalAuth(), courseController.getSingleCourse);
 
 /**
  * @swagger
@@ -160,10 +163,13 @@ router.get("/:courseId", optionalAuth(), courseController.getSingleCourse);
  *         description: Course updated successfully
  */
 router.put(
-  "/:courseId",
+  '/:courseId',
   auth(USER_ROLE.ADMIN),
-  upload.fields([{ name: "image", maxCount: 5 }]),
-  courseController.updateCourse
+  upload.fields([
+    { name: 'image', maxCount: 1 },
+    { name: 'instructorImage', maxCount: 1 },
+  ]),
+  courseController.updateCourse,
 );
 
 /**
@@ -193,10 +199,7 @@ router.put(
  *       200:
  *         description: Availability updated successfully
  */
-router.put(
-  "/availability/:courseId",
-  courseController.updateCourseAvailability
-);
+router.put('/availability/:courseId', courseController.updateCourseAvailability);
 
 const courseRouter = router;
 export default courseRouter;

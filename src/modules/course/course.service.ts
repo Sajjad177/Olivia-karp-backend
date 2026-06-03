@@ -1,11 +1,10 @@
-import httpStatus from "http-status";
-import AppError from "../../errors/AppError";
-import { uploadToCloudinary } from "../../utils/cloudinary";
-import EnrollCourse from "../enrollCourse/enrollCourse.model";
-import { ILesson } from "./course.interface";
-import Course from "./course.model";
-import purchaseSubscriptionService from "../purchaseSubscription/purchaseSubscription.service";
-
+import httpStatus from 'http-status';
+import AppError from '../../errors/AppError';
+import { uploadToCloudinary } from '../../utils/cloudinary';
+import EnrollCourse from '../enrollCourse/enrollCourse.model';
+import { ICourse, IImage, ILesson } from './course.interface';
+import Course from './course.model';
+import purchaseSubscriptionService from '../purchaseSubscription/purchaseSubscription.service';
 
 const CreateNewCourse = async (
   payload: any,
@@ -13,25 +12,18 @@ const CreateNewCourse = async (
 ) => {
   let lessons: ILesson[] = [];
 
-  // Parse lessons if sent as a JSON string from form-data
+  /* ---------------- Parse Lessons ---------------- */
   if (payload.lessons) {
-    lessons =
-      typeof payload.lessons === "string"
-        ? JSON.parse(payload.lessons)
-        : payload.lessons;
+    lessons = typeof payload.lessons === 'string' ? JSON.parse(payload.lessons) : payload.lessons;
   }
 
-  // Handle Cloudinary Image Upload
-  let image = { url: "", public_id: "" };
+  /* ---------------- Upload Course Image ---------------- */
+  let image: IImage = { url: '', public_id: '' };
 
-  if (files && files.image && files.image.length > 0) {
+  if (files?.image?.length) {
     const imageFile = files.image[0];
 
-    // Call your Cloudinary utility (ensure it's imported)
-    const cloudinaryResult = await uploadToCloudinary(
-      imageFile.path,
-      "courses",
-    );
+    const cloudinaryResult = await uploadToCloudinary(imageFile.path, 'courses');
 
     image = {
       url: cloudinaryResult.secure_url,
@@ -39,28 +31,48 @@ const CreateNewCourse = async (
     };
   }
 
-  const lessonsData = lessons.map((lesson) => ({
+  /* ---------------- Upload Instructor Image ---------------- */
+  let instructorImage: IImage = { url: '', public_id: '' };
+
+  if (files?.instructorImage?.length) {
+    const instructorFile = files.instructorImage[0];
+
+    const cloudinaryResult = await uploadToCloudinary(instructorFile.path, 'instructors');
+
+    instructorImage = {
+      url: cloudinaryResult.secure_url,
+      public_id: cloudinaryResult.public_id,
+    };
+  }
+
+  /* ---------------- Normalize Lessons ---------------- */
+  const lessonsData: ILesson[] = lessons.map((lesson) => ({
     title: lesson.title,
+    videoUrl: lesson.videoUrl,
     duration: lesson.duration,
     level: lesson.level,
-    videoUrl: lesson.videoUrl,
-    isLocked: lesson.isLocked !== undefined ? lesson.isLocked : true,
+    isLocked: lesson.isLocked ?? true,
   }));
 
-  const totalDurationMinutes = lessonsData.reduce((total, lesson) => {
-    return total + (parseInt(lesson.duration) || 0);
-  }, 0);
-
-  const courseData = {
-    ...payload,
+  /* ---------------- Final Course Payload ---------------- */
+  const courseData: Partial<ICourse> = {
+    title: payload.title,
+    category: payload.category,
+    difficulty: payload.difficulty,
+    instructorName: payload.instructorName,
+    instructorBio: payload.instructorBio,
+    instructorImage,
+    description: payload.description,
+    durationHours: Number(payload.durationHours) || 0,
+    estimatedWeeks: Number(payload.estimatedWeeks) || 0,
     lessons: lessonsData,
-    lessonCount: lessonsData.length,
-    totalDuration: `${totalDurationMinutes} min`,
-    price: Number(payload.price) || 0,
-    currency: payload.currency || "CAD",
     image,
+    price: Number(payload.price) || 0,
+    currency: payload.currency || 'CAD',
+    totalEnrolled: 0,
   };
 
+  /* ---------------- Save ---------------- */
   const result = await Course.create(courseData);
   return result;
 };
@@ -77,18 +89,18 @@ const getAllCourses = async (query: Record<string, any>, user?: any) => {
   // 1. Efficient Search: Use Text Index if searchTerm exists
   if (searchTerm) {
     filter.$or = [
-      { title: { $regex: searchTerm, $options: "i" } },
-      { category: { $regex: searchTerm, $options: "i" } },
+      { title: { $regex: searchTerm, $options: 'i' } },
+      { category: { $regex: searchTerm, $options: 'i' } },
     ];
   }
 
   // 2. Exact Category Filter: Avoid regex for fixed categories
-  if (category && !["all", "all courses"].includes(category.toLowerCase())) {
+  if (category && !['all', 'all courses'].includes(category.toLowerCase())) {
     // Standardize: "Business Courses" -> "Business"
-    const cleanCategory = category.replace(/\s*courses$/i, "").trim();
+    const cleanCategory = category.replace(/\s*courses$/i, '').trim();
 
     // Exact match is much faster than regex
-    filter.category = new RegExp(`^${cleanCategory}$`, "i");
+    filter.category = new RegExp(`^${cleanCategory}$`, 'i');
   }
 
   // 3. Optimized Execution: Lean queries and parallel counting
@@ -103,7 +115,7 @@ const getAllCourses = async (query: Record<string, any>, user?: any) => {
 
   let finalData: any = data;
 
-  if (user && user.role === "admin") {
+  if (user && user.role === 'admin') {
     finalData = data.map((course: any) => ({ ...course, isLocked: false }));
   } else {
     let enrolledCourseIds: string[] = [];
@@ -112,15 +124,17 @@ const getAllCourses = async (query: Record<string, any>, user?: any) => {
     if (user) {
       const enrollments = await EnrollCourse.find({
         userId: user._id || user.id,
-        paymentStatus: "completed",
+        paymentStatus: 'completed',
       });
       enrolledCourseIds = enrollments.map((e) => e.courseId.toString());
 
       try {
-        const benefits = await purchaseSubscriptionService.getUserBenefits((user._id || user.id).toString());
+        const benefits = await purchaseSubscriptionService.getUserBenefits(
+          (user._id || user.id).toString(),
+        );
         if (benefits.hasActiveSubscription) {
           const accessStatus = benefits.accessLevels?.courses;
-          if (accessStatus === "free_access" || accessStatus === "free_unlimited") {
+          if (accessStatus === 'free_access' || accessStatus === 'free_unlimited') {
             hasFreeCourseAccess = true;
           }
         }
@@ -137,7 +151,7 @@ const getAllCourses = async (query: Record<string, any>, user?: any) => {
       const lockedLessons = course.lessons
         ? course.lessons.map((lesson: any) => {
             if (isLocked) {
-              return { ...lesson, videoUrl: "LOCKED" };
+              return { ...lesson, videoUrl: 'LOCKED' };
             }
             return lesson;
           })
@@ -164,26 +178,28 @@ const getAllCourses = async (query: Record<string, any>, user?: any) => {
 
 const getSingleCourse = async (id: string, user?: any) => {
   const result = await Course.findById(id).lean();
-  if (!result) throw new AppError("Course not found", httpStatus.NOT_FOUND);
+  if (!result) throw new AppError('Course not found', httpStatus.NOT_FOUND);
 
   let hasAccess = false;
 
-  if (user && user.role === "admin") {
+  if (user && user.role === 'admin') {
     hasAccess = true;
   } else if (user) {
     const isEnrolled = await EnrollCourse.findOne({
       userId: user._id || user.id,
       courseId: id,
-      paymentStatus: "completed",
+      paymentStatus: 'completed',
     });
     if (isEnrolled) {
       hasAccess = true;
     } else {
       try {
-        const benefits = await purchaseSubscriptionService.getUserBenefits((user._id || user.id).toString());
+        const benefits = await purchaseSubscriptionService.getUserBenefits(
+          (user._id || user.id).toString(),
+        );
         if (benefits.hasActiveSubscription) {
           const accessStatus = benefits.accessLevels?.courses;
-          if (accessStatus === "free_access" || accessStatus === "free_unlimited") {
+          if (accessStatus === 'free_access' || accessStatus === 'free_unlimited') {
             hasAccess = true;
           }
         }
@@ -199,7 +215,7 @@ const getSingleCourse = async (id: string, user?: any) => {
   if (isLocked) {
     if (result.lessons) {
       result.lessons = result.lessons.map((lesson: any) => {
-        lesson.videoUrl = "LOCKED";
+        lesson.videoUrl = 'LOCKED';
         return lesson;
       });
     }
@@ -216,55 +232,80 @@ const updateCourse = async (
   const course = await Course.findById(id);
 
   if (!course) {
-    throw new AppError("Course not found", httpStatus.NOT_FOUND);
+    throw new AppError('Course not found', httpStatus.NOT_FOUND);
   }
 
-  let lessonsData = course.lessons;
+  /* ---------------- Lessons Update ---------------- */
+  let lessonsData: ILesson[] = course.lessons;
 
-  // 1. Properly parse and update lessons
   if (payload.lessons) {
     const lessons: ILesson[] =
-      typeof payload.lessons === "string"
-        ? JSON.parse(payload.lessons)
-        : payload.lessons;
+      typeof payload.lessons === 'string' ? JSON.parse(payload.lessons) : payload.lessons;
 
-    if (lessons.length > 0) {
-      lessonsData = lessons.map((lesson) => ({
-        title: lesson.title,
-        duration: lesson.duration,
-        level: lesson.level,
-        videoUrl: lesson.videoUrl,
-        isLocked: lesson.isLocked !== undefined ? lesson.isLocked : true,
-      }));
-    }
+    lessonsData = lessons.map((lesson) => ({
+      title: lesson.title,
+      videoUrl: lesson.videoUrl,
+      duration: lesson.duration,
+      level: lesson.level,
+      isLocked: lesson.isLocked ?? true,
+    }));
   }
 
-  // 2. Handle image from Multer fields object
+  /* ---------------- Course Image Update ---------------- */
   let image = course.image;
-  if (files && files.image && files.image.length > 0) {
+
+  if (files?.image?.length) {
     const imageFile = files.image[0];
+
+    const cloudinaryResult = await uploadToCloudinary(imageFile.path, 'courses');
+
     image = {
-      url: `/uploads/${imageFile.filename}`,
-      public_id: imageFile.filename,
+      url: cloudinaryResult.secure_url,
+      public_id: cloudinaryResult.public_id,
     };
   }
 
-  // 3. Recalculate derived data
-  const lessonCount = lessonsData.length;
-  const totalMinutes = lessonsData.reduce((total, lesson) => {
-    return total + (parseInt(lesson.duration) || 0);
-  }, 0);
+  /* ---------------- Instructor Image Update ---------------- */
+  let instructorImage = course.instructorImage;
 
-  // 4. Construct update object
-  const updatedData = {
-    ...payload, // Spread the rest (title, category, etc.)
+  if (files?.instructorImage?.length) {
+    const instructorFile = files.instructorImage[0];
+
+    const cloudinaryResult = await uploadToCloudinary(instructorFile.path, 'instructors');
+
+    instructorImage = {
+      url: cloudinaryResult.secure_url,
+      public_id: cloudinaryResult.public_id,
+    };
+  }
+
+  /* ---------------- Final Payload ---------------- */
+  const updatedData: Partial<ICourse> = {
+    ...payload,
+
     lessons: lessonsData,
-    lessonCount,
-    totalDuration: `${totalMinutes} min`,
-    price: payload.price ? Number(payload.price) : course.price,
+
     image,
+    instructorImage,
+
+    durationHours: payload.durationHours ? Number(payload.durationHours) : course.durationHours,
+
+    estimatedWeeks: payload.estimatedWeeks ? Number(payload.estimatedWeeks) : course.estimatedWeeks,
+
+    price: payload.price ? Number(payload.price) : course.price,
+
+    isLocked:
+      payload.isLocked !== undefined
+        ? payload.isLocked === 'true' || payload.isLocked === true
+        : course.isLocked,
+
+    isAvailable:
+      payload.isAvailable !== undefined
+        ? payload.isAvailable === 'true' || payload.isAvailable === true
+        : course.isAvailable,
   };
 
+  /* ---------------- Update DB ---------------- */
   const result = await Course.findByIdAndUpdate(id, updatedData, {
     new: true,
     runValidators: true,
@@ -275,13 +316,9 @@ const updateCourse = async (
 
 const updateCourseAvailability = async (id: string) => {
   const course = await Course.findById(id);
-  if (!course) throw new AppError("Course not found", httpStatus.NOT_FOUND);
+  if (!course) throw new AppError('Course not found', httpStatus.NOT_FOUND);
 
-  return await Course.findByIdAndUpdate(
-    id,
-    { isAvailable: !course.isAvailable },
-    { new: true },
-  );
+  return await Course.findByIdAndUpdate(id, { isAvailable: !course.isAvailable }, { new: true });
 };
 
 const courseService = {

@@ -1,27 +1,33 @@
 export interface ILesson {
   title: string;
-  duration: string;
-  level: string;
   videoUrl: string;
+  duration?: string;
+  level?: string;
   isLocked?: boolean;
+}
+
+export interface IImage {
+  url: string;
+  public_id: string;
 }
 
 export interface ICourse {
   title: string;
   category: string;
-  picture?: string;
+  difficulty: string;
+  instructorName: string;
+  instructorBio: string;
+  instructorImage: IImage;
   description?: string;
-  level: string;
-  lessonCount: number;
-  totalDuration: string;
+  durationHours: number;
+  estimatedWeeks: number;
   lessons: ILesson[];
-  isLocked: boolean;
-  price: number;
-  currency: string;
-  image: {
-    url: string;
-    public_id: string;
-  };
-  isAvailable: boolean;
-  totalEnrolled: number;
+  image: IImage;
+  isLocked?: boolean;
+  isAvailable?: boolean;
+  price?: number;
+  currency?: string;
+  totalEnrolled?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
