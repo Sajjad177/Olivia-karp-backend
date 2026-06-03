@@ -15,7 +15,7 @@ const router = Router();
 
 /**
  * @swagger
- * /api/v1/JoinMentorsAndCoache/join:
+ * /api/v1/mentors-coaches/join:
  *   post:
  *     summary: Apply to join as a Mentor or Coach
  *     tags: [JoinMentorsAndCoache]
@@ -79,7 +79,7 @@ router.post(
 
 /**
  * @swagger
- * /api/v1/JoinMentorsAndCoache/all:
+ * /api/v1/mentors-coaches/all:
  *   get:
  *     summary: Retrieve all join applications (Admin Only)
  *     tags: [JoinMentorsAndCoache]
@@ -113,7 +113,7 @@ router.get("/all", JoinMentorsAndCoachController.getAllJoinMentorsAndCoaches);
 
 /**
  * @swagger
- * /api/v1/JoinMentorsAndCoache:
+ * /api/v1/mentors-coaches:
  *   get:
  *     summary: Retrieve approved and active Mentors/Coaches (Public)
  *     tags: [JoinMentorsAndCoache]
@@ -138,7 +138,7 @@ router.get(
 
 /**
  * @swagger
- * /api/v1/JoinMentorsAndCoache/{joinMentorsAndCoachId}:
+ * /api/v1/mentors-coaches/{joinMentorsAndCoachId}:
  *   get:
  *     summary: Get details of a single Mentor/Coach profile
  *     tags: [JoinMentorsAndCoache]
@@ -159,7 +159,7 @@ router.get(
 
 /**
  * @swagger
- * /api/v1/JoinMentorsAndCoache/approved/{joinMentorsAndCoachId}:
+ * /api/v1/mentors-coaches/approved/{joinMentorsAndCoachId}:
  *   put:
  *     summary: Approve a Mentor/Coach application (Admin Only)
  *     tags: [JoinMentorsAndCoache]
@@ -182,7 +182,7 @@ router.put(
 
 /**
  * @swagger
- * /api/v1/JoinMentorsAndCoache/toggle/{joinMentorsAndCoachId}:
+ * /api/v1/mentors-coaches/toggle/{joinMentorsAndCoachId}:
  *   put:
  *     summary: Toggle active status (show/hide) of a Mentor/Coach (Admin Only)
  *     tags: [JoinMentorsAndCoache]
@@ -205,7 +205,7 @@ router.put(
 
 /**
  * @swagger
- * /api/v1/JoinMentorsAndCoache/bulk-upload:
+ * /api/v1/mentors-coaches/bulk-upload:
  *   post:
  *     summary: Bulk upload Mentors and Coaches via CSV (Admin Only)
  *     tags: [JoinMentorsAndCoache]
