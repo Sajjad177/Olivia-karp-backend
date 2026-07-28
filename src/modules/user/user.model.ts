@@ -1,8 +1,8 @@
-import bcrypt from "bcrypt";
-import { model, Schema } from "mongoose";
-import config from "../../config";
-import { applyEncryption } from "../../middleware/encryptionMiddleware";
-import { IUser, userModel } from "./user.interface";
+import bcrypt from 'bcrypt';
+import { model, Schema } from 'mongoose';
+import config from '../../config';
+import { applyEncryption } from '../../middleware/encryptionMiddleware';
+import { IUser, userModel } from './user.interface';
 
 const userSchema = new Schema<IUser>(
   {
@@ -40,8 +40,8 @@ const userSchema = new Schema<IUser>(
     },
     role: {
       type: String,
-      enum: ["admin", "non-member", "member"],
-      default: "non-member",
+      enum: ['admin', 'non-member', 'member'],
+      default: 'non-member',
     },
     // ⬇️ ADD THESE TWO FIELDS ⬇️
     mightyMemberId: {
@@ -58,7 +58,7 @@ const userSchema = new Schema<IUser>(
     },
     image: {
       public_id: {
-        type: String, 
+        type: String,
       },
       url: {
         type: String,
@@ -76,8 +76,8 @@ const userSchema = new Schema<IUser>(
       {
         provider: {
           type: String,
-          enum: ["google", "facebook", "linkedin", "apple", "credentials"],
-          default: "credentials",
+          enum: ['google', 'facebook', 'linkedin', 'apple', 'credentials'],
+          default: 'credentials',
         },
         providerId: {
           type: String,
@@ -88,6 +88,10 @@ const userSchema = new Schema<IUser>(
     otpExpires: { type: Date, default: null },
     resetPasswordOtp: { type: String, default: null },
     resetPasswordOtpExpires: { type: Date, default: null },
+    freeChatUsed: {
+      type: Number,
+      default: 0,
+    },
   },
   {
     timestamps: true,
@@ -95,52 +99,45 @@ const userSchema = new Schema<IUser>(
   },
 );
 
-userSchema.pre("save", async function (this: any, next: (err?: Error) => void) {
+userSchema.pre('save', async function (this: any, next: (err?: Error) => void) {
   // 🔹 password change না হলে hash করো না
-  if (!this.isModified("password")) {
+  if (!this.isModified('password')) {
     return next();
   }
 
   // 🔹 password না থাকলে stop
   if (!this.password) {
-    return next(new Error("Password is required"));
+    return next(new Error('Password is required'));
   }
 
   const saltRounds = Number(config.bcryptSaltRounds);
 
   // 🔹 saltRounds valid কিনা check
   if (!saltRounds) {
-    return next(new Error("Bcrypt salt rounds not configured"));
+    return next(new Error('Bcrypt salt rounds not configured'));
   }
 
   this.password = await bcrypt.hash(this.password, saltRounds);
   next();
 });
 
-userSchema.post("save", function (doc: any, next: (err?: Error) => void) {
-  doc.password = "";
+userSchema.post('save', function (doc: any, next: (err?: Error) => void) {
+  doc.password = '';
   next();
 });
 
-userSchema.statics.isPasswordMatch = async function (
-  password: string,
-  hashedPassword: string
-) {
+userSchema.statics.isPasswordMatch = async function (password: string, hashedPassword: string) {
   return await bcrypt.compare(password, hashedPassword);
 };
 
-userSchema.statics.isUserExistByEmail = async function (
-  email: string
-): Promise<IUser | null> {
+userSchema.statics.isUserExistByEmail = async function (email: string): Promise<IUser | null> {
   return await User.findOne({ email });
 };
 
-userSchema.statics.isUserExistById = async function (
-  _id: string
-): Promise<IUser | null> {
+userSchema.statics.isUserExistById = async function (_id: string): Promise<IUser | null> {
   return await User.findOne({ _id });
 };
 
-applyEncryption(userSchema, ["phone", "street", "location", "postalCode"]);
+applyEncryption(userSchema, ['phone', 'street', 'location', 'postalCode']);
 
-export const User = model<IUser, userModel>("User", userSchema);
+export const User = model<IUser, userModel>('User', userSchema);

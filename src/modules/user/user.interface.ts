@@ -1,8 +1,8 @@
-import { Model } from "mongoose";
-import { USER_ROLE } from "./user.constant";
+import { Model } from 'mongoose';
+import { USER_ROLE } from './user.constant';
 
 export interface IAuthInterface {
-  provider: "google" | "facebook" | "linkedin" | "apple" | "credentials";
+  provider: 'google' | 'facebook' | 'linkedin' | 'apple' | 'credentials';
   providerId: string;
 }
 
@@ -19,7 +19,7 @@ export interface IUser {
   dateOfBirth: Date;
   role: string;
   mightyMemberId?: string; // New: To link to MN account
-  memberSince?: Date;      // New: To track upgrade date
+  memberSince?: Date; // New: To track upgrade date
   last_mn_sync?: Date;
   image: {
     public_id: string;
@@ -32,6 +32,7 @@ export interface IUser {
   otpExpires?: Date | null;
   resetPasswordOtp?: string | null;
   resetPasswordOtpExpires?: Date | null;
+  freeChatUsed: number;
 }
 
 export interface userModel extends Model<IUser> {
