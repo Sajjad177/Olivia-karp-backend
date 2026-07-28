@@ -4,6 +4,7 @@ import { ApplyBlogRoutes } from "../modules/applyBlog/applyBlog.routes";
 import applyJobRouter from "../modules/applyJob/applyJob.router";
 import authRouter from "../modules/auth/auth.router";
 import { BlogRoutes } from "../modules/blog/blog.routes";
+import chatbotRouter from "../modules/chatbot/chatbot.router";
 import contactRouter from "../modules/contact/contact.router";
 import courseRouter from "../modules/course/course.router";
 import { CourseIdeaRoutes } from "../modules/courseIdea/courseIdea.routes";
@@ -111,6 +112,10 @@ const moduleRoutes = [
   {
     path: "/payment",
     route: paymentRouter,
+  },
+  {
+    path: "/chatbot",
+    route: chatbotRouter,
   },
   {
     path: "/purchase-records",
